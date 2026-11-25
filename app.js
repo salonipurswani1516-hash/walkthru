@@ -12,11 +12,13 @@ const hideErr = (node) => { node.textContent = ""; node.classList.add("hidden");
 function renderMarkdown(raw) {
   if (!raw) return "";
 
-  // 1. Escape HTML
-  let s = raw
+  // 1. Strict HTML Entity Encoding to prevent XSS
+  let s = String(raw)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
   // 2. Math & symbol replacements (roots, superscripts, LaTeX symbols)
   s = s.replace(/\\sqrt\{([^}]+)\}/g, "√($1)");

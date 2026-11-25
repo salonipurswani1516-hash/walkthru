@@ -18,33 +18,60 @@ const PORT = process.env.PORT || 3000;
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
-  ".js": "application/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".ico": "image/x-icon"
+  ".js": "application/javascript; charset=utf-8"
 };
 
+// Strict whitelist of public files that clients are allowed to request
+const ALLOWED_PUBLIC_FILES = new Set(["index.html", "style.css", "app.js"]);
+
+function setSecurityHeaders(res) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:;"
+  );
+}
+
 http.createServer((req, res) => {
+  setSecurityHeaders(res);
   const parsedUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
 
-  // Health check endpoint for container orchestrators and cloud load balancers
+  // Health check endpoint for cloud load balancers
   if (parsedUrl.pathname === "/health" || parsedUrl.pathname === "/api/health") {
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     return res.end(JSON.stringify({ status: "ok", uptime: Math.floor(process.uptime()) }));
   }
 
-  // Handle HEAD requests gracefully
+  // Handle HEAD requests
   if (req.method === "HEAD") {
     res.statusCode = 200;
     return res.end();
   }
 
+  // API Route
   if (parsedUrl.pathname === "/api/chat") {
     let body = "";
-    req.on("data", (chunk) => (body += chunk));
+    let isTooLarge = false;
+
+    // Guard against oversized payload attacks (max 50KB)
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > 50000) {
+        isTooLarge = true;
+        res.statusCode = 413;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ error: "Payload exceeds 50KB limit" }));
+        req.destroy();
+      }
+    });
+
     req.on("end", async () => {
+      if (isTooLarge) return;
       try { req.body = body ? JSON.parse(body) : {}; } catch { req.body = {}; }
       res.status = (code) => { res.statusCode = code; return res; };
       res.json = (obj) => { res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(obj)); };
@@ -61,13 +88,14 @@ http.createServer((req, res) => {
     return;
   }
 
+  // Static File Serving with strict whitelisting
   const rawPath = parsedUrl.pathname === "/" ? "index.html" : parsedUrl.pathname.slice(1);
-  const filePath = path.normalize(path.join(process.cwd(), rawPath));
-  if (!filePath.startsWith(process.cwd())) {
-    res.statusCode = 403;
-    return res.end("Forbidden");
+  if (!ALLOWED_PUBLIC_FILES.has(rawPath)) {
+    res.statusCode = 404;
+    return res.end("Not found");
   }
 
+  const filePath = path.normalize(path.join(process.cwd(), rawPath));
   const ext = path.extname(filePath);
   if (MIME[ext] && fs.existsSync(filePath)) {
     res.setHeader("Content-Type", MIME[ext]);
