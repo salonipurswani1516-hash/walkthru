@@ -49,10 +49,60 @@ function sendSSE(res, text) {
   res.end();
 }
 
+// In-memory sliding window rate limiter: 25 requests per minute per IP
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_REQUESTS_PER_WINDOW = 25;
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const record = rateLimitMap.get(ip) || [];
+  const recent = record.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  if (recent.length >= MAX_REQUESTS_PER_WINDOW) {
+    rateLimitMap.set(ip, recent);
+    return true;
+  }
+  recent.push(now);
+  rateLimitMap.set(ip, recent);
+
+  // Periodic cleanup
+  if (rateLimitMap.size > 2000) {
+    for (const [k, v] of rateLimitMap.entries()) {
+      if (v.every((t) => now - t >= RATE_LIMIT_WINDOW_MS)) {
+        rateLimitMap.delete(k);
+      }
+    }
+  }
+  return false;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
+  const clientIp =
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.headers["x-real-ip"] ||
+    req.socket?.remoteAddress ||
+    "client";
+
+  if (isRateLimited(clientIp)) {
+    res.setHeader("Retry-After", "60");
+    return res.status(429).json({ error: "Rate limit exceeded (max 25 requests/min). Please wait a moment." });
+  }
+
   const { type, language = "Python", mode = "dryrun", code = "", error = "", message = "", history = [] } = req.body || {};
+
+  // Input length guards
+  if (typeof code === "string" && code.length > 25000) {
+    return res.status(400).json({ error: "Code snippet exceeds maximum limit of 25,000 characters." });
+  }
+  if (typeof message === "string" && message.length > 4000) {
+    return res.status(400).json({ error: "Chat message exceeds maximum limit of 4,000 characters." });
+  }
+  if (typeof error === "string" && error.length > 2000) {
+    return res.status(400).json({ error: "Error message exceeds maximum limit of 2,000 characters." });
+  }
+
   if (type !== "chat" && !code.trim() && !error.trim()) {
     return res.status(400).json({ error: "Paste a code snippet or error message first." });
   }
