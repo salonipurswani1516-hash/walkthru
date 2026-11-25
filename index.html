@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Walkthru — Interactive AI Code Companion, visual execution trace engine, Socratic debugging hints, edge-case auditor, and viva simulator." />
+  <meta name="theme-color" content="#090809" />
+  <meta property="og:title" content="Walkthru — AI Code Explainer &amp; Debugger" />
+  <meta property="og:description" content="Trace execution flows, audit edge cases, debug with Socratic hints, and practice viva defense." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>" />
+  <title>Walkthru — AI Code Explainer &amp; Debugger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="header">
+    <span class="brand-badge">AI Code Companion</span>
+    <h1>Walkthru</h1>
+    <p>Trace execution flows, audit edge cases, debug with Socratic hints, and practice viva defense.</p>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <div class="panel-header"><span class="step-pill">01</span><h2>Code &amp; Error Workspace</h2></div>
+      <div class="controls">
+        <div class="control-group">
+          <label for="language">Language</label>
+          <select id="language">
+            <option value="Python" selected>Python</option>
+            <option value="C / C++">C / C++</option>
+            <option value="Java">Java</option>
+            <option value="JavaScript">JavaScript</option>
+            <option value="Other / Auto-detect">Other / Auto-detect</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label for="mode">Mode</label>
+          <select id="mode">
+            <option value="dryrun" selected>Visual Dry-Run Flow</option>
+            <option value="socratic">Socratic Debug (Hints Only)</option>
+            <option value="edgecases">Edge-Case &amp; Dry-Run Table</option>
+            <option value="viva">Viva / Code-Defense Drill</option>
+          </select>
+        </div>
+      </div>
+
+      <label for="codeInput" class="field-label">Code Snippet</label>
+      <textarea id="codeInput" rows="10" spellcheck="false" placeholder="def average(nums):&#10;    return sum(nums) / len(nums)"></textarea>
+
+      <label for="errorInput" class="field-label">Error Message <span class="optional">(Optional)</span></label>
+      <input type="text" id="errorInput" placeholder="e.g., ZeroDivisionError: division by zero" />
+
+      <div class="button-row">
+        <button id="analyzeBtn" class="btn primary">Analyze Code</button>
+        <button id="clearBtn" class="btn secondary">Clear</button>
+      </div>
+
+      <div id="analyzerError" class="error-banner hidden"></div>
+      <div class="output-box">
+        <h3>Analysis Result</h3>
+        <div id="analysisOutput" class="output-content">Select a mode and click Analyze Code to generate a visual dry run, Socratic clue, or edge-case table.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header"><span class="step-pill">02</span><h2>Walkthru AI Chatbot</h2></div>
+      <p class="hint">Ask questions about complexity, test edge cases, or respond to Socratic hints.</p>
+      <div id="chatMessages" class="chat-messages">
+        <div class="msg bot">Hi! Paste your code on the left and pick a mode—or ask me any debugging question below.</div>
+      </div>
+      <div id="chatError" class="error-banner hidden"></div>
+      <form id="chatForm" class="chat-form">
+        <input type="text" id="chatInput" placeholder="Ask a question or reply to a hint..." autocomplete="off" />
+        <button type="submit" id="sendBtn" class="btn primary">Send</button>
+      </form>
+    </section>
+  </main>
+
+  <footer class="footer">Walkthru • Visual Dry-Run, Socratic Debugging &amp; Viva Simulator</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
